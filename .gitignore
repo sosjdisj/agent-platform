@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+
+# Node
+node_modules/
+frontend/dist/
+*.local
+
+# 环境变量（保留 .env.example）
+.env
+
+# Seed 生成的数据目录（知识文档等，内容由 backend/app/seed.py 维护）
+data/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
