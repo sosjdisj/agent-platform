@@ -38,18 +38,24 @@ from app.core.llm import LLMService, get_llm_service
 from app.core.redis import RedisService
 from app.db.session import SessionLocal
 from app.mcp.base import BaseTool, RiskLevel
-from app.mcp.client import MCPClient
 from app.mcp.business.create_ticket import CreateTicketTool
 from app.mcp.business.get_crm_summary import GetCrmSummaryTool
 from app.mcp.business.refund_order import RefundOrderTool
 from app.mcp.business.update_customer import UpdateCustomerTool
+from app.mcp.client import MCPClient
+from app.mcp.database.query_customers import QueryCustomersTool
+from app.mcp.database.query_orders import QueryOrdersTool
 from app.mcp.registry import ToolRegistry
 
 BUSINESS_AGENT_NAME = "business"
 
 # 业务白名单：工具名 → 声明风险等级（名称与注册顺序的唯一来源；校验时名称与风险需同时命中）
+# 读工具（query_customers / query_orders）供"先查后办"自洽闭环：退款 / 更新所需的
+# customer_id / order_id 由业务 Agent 自行查询补齐，不依赖跨 Agent 结果传递
 BUSINESS_TOOL_RISKS = {
     "get_crm_summary": RiskLevel.LOW,
+    "query_customers": RiskLevel.SAFE,
+    "query_orders": RiskLevel.SAFE,
     "create_ticket": RiskLevel.MEDIUM,
     "update_customer": RiskLevel.HIGH,
     "refund_order": RiskLevel.HIGH,
@@ -60,19 +66,26 @@ BUSINESS_TOOLS = tuple(BUSINESS_TOOL_RISKS)
 
 _BUSINESS_TOOL_CLASSES = (
     GetCrmSummaryTool,
+    QueryCustomersTool,
+    QueryOrdersTool,
     CreateTicketTool,
     UpdateCustomerTool,
     RefundOrderTool,
 )
 
-# 业务操作系统提示：按信息需求选工具、客户 ID 未知先确认、高风险操作先核对、待审批如实说明
+# 业务操作系统提示：按信息需求选工具、先查后办、指令明确即直接调用工具、待审批如实说明
 BUSINESS_SYSTEM_PROMPT = (
     "你是企业 CRM 业务助手，可使用以下工具完成客户服务："
+    "按名称 / 编码检索客户主数据用 query_customers（返回客户 ID）；"
+    "查询客户订单明细（含订单 ID 与状态）用 query_orders（需客户 ID）；"
     "了解客户整体情况（主数据 / 订单 / 销售 / 工单统计）用 get_crm_summary（需客户 ID）；"
     "为客户创建售后工单用 create_ticket（需客户 ID、标题、内容，可选优先级 low/medium/high/urgent）；"
     "更新客户主数据用 update_customer（高风险，需客户 ID 和至少一个待更新字段）；"
     "订单全额退款用 refund_order（高风险，需订单 ID 和退款原因）。"
-    "客户 ID 未知时先向用户确认，不要猜测或编造；执行更新 / 退款前需与用户核对清楚；"
+    "执行标准是先查后办：客户 ID 未知先调 query_customers 补齐，订单 ID 未知先调 query_orders 补齐，"
+    "信息补齐后必须实际调用写工具完成任务，禁止在回复中向用户追问、请示或只给办理指引而不执行；"
+    "客户的更新 / 退款 / 建工单指令要素明确时直接调用对应工具，"
+    "越权拦截与高危人工审批由平台门控自动执行，无需向用户二次确认；"
     "高风险操作提交后系统会标记待人工审批，回复中如实说明已提交待审批，不要声称立即生效；"
     "创建工单成功后如实回报工单号与状态；工具报错或信息不足时如实说明。"
 )

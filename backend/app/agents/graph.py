@@ -62,6 +62,9 @@ BASE_AGENT_NAME = "assistant"
 
 # 审批拒绝错误码：被拒工具不执行、不计入执行错误（走 fallback 报告，结果标记 partial）
 APPROVAL_REJECTED = "APPROVAL_REJECTED"
+# 权限拒绝错误码：与审批拒绝同属平台业务决定——拒绝即最终结论，不计入执行错误，
+# 工具消息回传 LLM 由其生成礼貌拒答的 fallback 报告（任务正常完成而非失败）
+PERMISSION_DENIED = "PERMISSION_DENIED"
 
 
 def elapsed_ms(started: float) -> int:
@@ -367,8 +370,9 @@ def build_agent_graph(
                     "content": result.model_dump_json(),
                 }
             )
-            if not result.success and result.error_code != APPROVAL_REJECTED:
-                # APPROVAL_REJECTED 是业务决定（走 fallback 报告），不算执行错误
+            if not result.success and result.error_code not in (APPROVAL_REJECTED, PERMISSION_DENIED):
+                # APPROVAL_REJECTED / PERMISSION_DENIED 是平台业务决定（走 fallback 报告），
+                # 不算执行错误——权限拒绝的语义是"结论为拒绝"而非"执行出错"
                 errors.append(f"工具 {name} 调用失败 [{result.error_code}]: {result.message}")
             # 轨迹与 state.tool_results 一一对应：每次调用（含被拒 / 参数非法）各一条 tool_result
             await write_trace(

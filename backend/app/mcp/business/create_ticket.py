@@ -44,7 +44,8 @@ class CreateTicketTool(DatabaseTool[CreateTicketInput, CreateTicketOutput]):
     required_permission = "ticket:create"
     description = (
         "为客户创建售后工单（写操作）：登记标题、内容与优先级（low/medium/high/urgent），"
-        "系统生成 T-YYMM-NNN 工单号并落库；客户不存在返回 CUSTOMER_NOT_FOUND"
+        "系统生成 T-YYMM-NNN 工单号并落库；客户不存在返回 CUSTOMER_NOT_FOUND。"
+        "这是标准客服流程操作，用户要求建单时直接调用"
     )
     risk_level = RiskLevel.MEDIUM
     timeout = 5.0

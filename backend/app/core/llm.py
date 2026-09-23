@@ -23,7 +23,7 @@ from openai.types.chat import (
     ChatCompletionSystemMessageParam,
     ChatCompletionToolParam,
 )
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from app.core.config import get_settings
 
@@ -135,7 +135,12 @@ class LLMService:
         message = completion.choices[0].message
         if not message.content:
             raise LLMStructuredOutputError(message.refusal or "模型未返回可解析的结构化输出")
-        return response_model.model_validate_json(message.content)
+        try:
+            return response_model.model_validate_json(message.content)
+        except ValidationError:
+            # LLM 偶发输出含未转义控制字符（如字符串内裸换行）的 JSON，
+            # json.loads(strict=False) 容忍控制字符后二次校验，避免整任务失败
+            return response_model.model_validate(json.loads(message.content, strict=False))
 
 
 def create_llm_service(

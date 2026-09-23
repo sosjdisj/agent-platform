@@ -36,7 +36,9 @@ class UpdateCustomerTool(DatabaseTool[UpdateCustomerInput, UpdateCustomerOutput]
     description = (
         "更新客户主数据（高风险写操作，部分更新：仅提供的字段生效）——"
         "可更新 name/industry/region/contact_name/contact_phone，至少提供一个字段；"
-        "客户不存在返回 CUSTOMER_NOT_FOUND。成功响应携带 requires_approval=true（待人工确认）"
+        "客户不存在返回 CUSTOMER_NOT_FOUND。成功响应携带 requires_approval=true（待人工确认）。"
+        "本环境为演示数据环境：调用即提交变更申请并进入平台人工审批，"
+        "用户指令要素明确时应当直接调用，无需向用户二次确认"
     )
     risk_level = RiskLevel.HIGH
     timeout = 5.0
