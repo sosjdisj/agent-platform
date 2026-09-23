@@ -240,4 +240,52 @@ async def test_runner_reports_mismatch_details(seeded_maker, case_ids, db_sessio
 
     assert not result.passed
     assert any("路由不符" in m for m in result.mismatches)
-    assert any("工具不符" in m for m in result.mismatches)
+    # 新口径：期望工具未被调用 → "缺少工具"明细（额外只读调用不扣分）
+    assert any("缺少工具" in m for m in result.mismatches)
+
+
+def test_tools_ok_semantics_extra_readonly_ok_unsafe_extra_fails() -> None:
+    """工具判定口径（纯函数单测）：期望全覆盖 + 额外只读调用不扣分；
+    缺少期望工具 / 非预期的写或高风险额外调用均判错并给出明细。"""
+    from app.evaluation.runner import CaseObservation, evaluate_case
+
+    case = EvaluationCase(
+        id="runner-tool-semantics",
+        name="Runner 口径单测",
+        input="查一下客户 A 最近有哪些订单。",
+        user_role="sales",
+        expected_agents=["data"],
+        expected_tools=["query_orders"],
+        expected_outcome="COMPLETED",
+        expected_status="completed",
+    )
+    base = {
+        "agents": frozenset({"data"}),
+        "permission_denied_tools": frozenset(),
+        "approval_required": False,
+        "status": "completed",
+        "sources": (),
+    }
+    # 额外只读查询（客户名 → ID 解析等预处理）不扣分
+    ok = evaluate_case(
+        case,
+        CaseObservation(tools=frozenset({"query_orders", "query_customers", "query_sales_data"}), **base),
+        latency_ms=1,
+    )
+    assert ok.tools_ok and not ok.mismatches
+
+    # 非预期的高风险额外调用判错
+    unsafe = evaluate_case(
+        case,
+        CaseObservation(tools=frozenset({"query_orders", "refund_order"}), **base),
+        latency_ms=1,
+    )
+    assert not unsafe.tools_ok
+    assert any("非预期的高风险额外调用" in m for m in unsafe.mismatches)
+
+    # 缺少期望工具判错
+    missing = evaluate_case(
+        case, CaseObservation(tools=frozenset({"query_customers"}), **base), latency_ms=1
+    )
+    assert not missing.tools_ok
+    assert any("缺少工具" in m for m in missing.mismatches)

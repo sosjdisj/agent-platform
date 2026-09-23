@@ -184,7 +184,8 @@ async def test_refund_denied_for_limited_roles(
 
     result = AgentState.model_validate(await graph.ainvoke(state))
 
-    assert result.status is AgentStatus.FAILED
+    # 权限拒绝为业务决定：不计入执行错误，LLM 以 fallback 报告正常收束（COMPLETED）
+    assert result.status is AgentStatus.COMPLETED
     record = result.tool_results[0]
     assert record.result.success is False
     assert record.result.error_code == "PERMISSION_DENIED"

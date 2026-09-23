@@ -109,13 +109,17 @@ async def test_allowed_user_executes_tool(db_session, db_session_maker):
 
 
 async def test_denied_user_blocked_and_trace_event_written(db_session, db_session_maker):
-    """无权限用户（employee）：工具不执行，返回 PERMISSION_DENIED，拒绝事件落 agent_trace_events。"""
+    """无权限用户（employee）：工具不执行，返回 PERMISSION_DENIED，拒绝事件落 agent_trace_events。
+
+    权限拒绝是平台业务决定（与审批拒绝一致）：不计入执行错误，工具消息回传 LLM 生成
+    礼貌拒答的 fallback 报告，任务正常完成（COMPLETED）而非失败。"""
     _, employee_id = await _seed_users(db_session)
     graph, state = _build_graph(db_session_maker, employee_id, task_id=202)
 
     result = AgentState.model_validate(await graph.ainvoke(state))
 
-    assert result.status is AgentStatus.FAILED
+    assert result.status is AgentStatus.COMPLETED
+    assert result.errors == []
     record = result.tool_results[0]
     assert record.result.success is False
     assert record.result.error_code == "PERMISSION_DENIED"
