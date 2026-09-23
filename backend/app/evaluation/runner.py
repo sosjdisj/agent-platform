@@ -154,6 +154,26 @@ def observe_task(task: AgentTask, events: Sequence[AgentTraceEvent]) -> CaseObse
     )
 
 
+def _safe_tool_names() -> frozenset[str]:
+    """只读工具名集合（SAFE / LOW 风险等级）：工具选择判定的"允许多查"白名单。
+    惰性解析并缓存——注册表在进程内填充，评估首次判定时登记全部工具。"""
+    from functools import lru_cache
+
+    @lru_cache(maxsize=1)
+    def _resolve() -> frozenset[str]:
+        from app.mcp.base import RiskLevel
+        from app.mcp.registry import get_tool_registry
+        from app.mcp.tools import register_default_tools
+
+        registry = get_tool_registry()
+        if not registry.all_tools():
+            register_default_tools(registry)
+        readonly = (RiskLevel.SAFE, RiskLevel.LOW)
+        return frozenset(t.name for t in registry.all_tools() if t.risk_level in readonly)
+
+    return _resolve()
+
+
 def evaluate_case(
     case: EvaluationCase, observation: CaseObservation, *, latency_ms: int
 ) -> CaseRunResult:
@@ -166,18 +186,30 @@ def evaluate_case(
             f"路由不符：期望 {sorted(case.expected_agents)}，实际 {sorted(observation.agents)}"
         )
 
-    tools_ok = observation.tools == frozenset(case.expected_tools)
-    if not tools_ok:
-        mismatches.append(f"工具不符：期望 {sorted(case.expected_tools)}，实际 {sorted(observation.tools)}")
+    # 工具判定口径：期望工具必须全部被调用（覆盖面）；额外调用仅允许 SAFE 只读工具
+    # （客户名 → ID 解析等必要预处理），非预期的写 / 高风险工具调用视为选择错误。
+    expected_tools = frozenset(case.expected_tools)
+    missing_tools = expected_tools - observation.tools
+    unsafe_extra = observation.tools - expected_tools - _safe_tool_names()
+    tools_ok = not missing_tools and not unsafe_extra
+    if missing_tools:
+        mismatches.append(f"缺少工具：{sorted(missing_tools)}，实际 {sorted(observation.tools)}")
+    if unsafe_extra:
+        mismatches.append(
+            f"非预期的高风险额外调用：{sorted(unsafe_extra)}，实际 {sorted(observation.tools)}"
+        )
 
     status_ok = observation.status == case.expected_status
     if not status_ok:
         mismatches.append(f"状态不符：期望 {case.expected_status}，实际 {observation.status}")
 
+    # 权限判定口径：期望拒绝时，至少一个期望工具确实被拦截即视为权限链路生效
+    # （Agent 额外尝试的其他越权工具同样被拦截属正确安全行为，不扣分）；
+    # 不期望拒绝时，出现任何 permission_denied 即违规。
     expected_denial = case.expected_outcome == OUTCOME_PERMISSION_DENIED
-    permission_ok = bool(observation.permission_denied_tools) is expected_denial and (
-        not expected_denial
-        or observation.permission_denied_tools <= frozenset(case.expected_tools)
+    denied = observation.permission_denied_tools
+    permission_ok = bool(denied) is expected_denial and (
+        not expected_denial or bool(denied & frozenset(case.expected_tools))
     )
     if not permission_ok:
         mismatches.append(

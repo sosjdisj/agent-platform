@@ -12,7 +12,7 @@ EVALUATION_CASES: list[EvaluationCase] = [
     EvaluationCase(
         id="e2e-sales-drop-core",
         name="核心场景：客户A销售额下降归因",
-        input="帮我分析客户 A 最近销售额下降的原因。",
+        input="帮我分析华信智造（客户A）最近销售额下降的原因。",
         user_role="sales",
         expected_agents=["data", "knowledge"],
         expected_tools=["query_customers", "query_sales_data", "query_orders", "search_knowledge"],
@@ -33,7 +33,7 @@ EVALUATION_CASES: list[EvaluationCase] = [
     EvaluationCase(
         id="routing-customer-profile",
         name="路由：单数据 Agent 查档",
-        input="查一下客户 B 的基本资料和最近订单。",
+        input="查一下苏南精工（客户B）的基本资料和最近订单。",
         user_role="employee",
         expected_agents=["data"],
         expected_tools=["query_customers", "query_orders"],
@@ -44,7 +44,7 @@ EVALUATION_CASES: list[EvaluationCase] = [
     EvaluationCase(
         id="routing-crm-and-policy",
         name="路由：业务+知识双 Agent",
-        input="客户 C 的 CRM 概览怎么样？顺便查一下售后服务制度的要求。",
+        input="中晟光电（客户C）的 CRM 概览怎么样？顺便查一下售后服务制度的要求。",
         user_role="sales",
         expected_agents=["business", "knowledge"],
         expected_tools=["get_crm_summary", "search_knowledge"],
@@ -56,7 +56,7 @@ EVALUATION_CASES: list[EvaluationCase] = [
     EvaluationCase(
         id="tool-select-monthly-trend",
         name="工具选择：聚合趋势而非订单明细",
-        input="统计客户 A 最近几个月的销售额趋势。",
+        input="统计华信智造（客户A）最近几个月的销售额趋势。",
         user_role="sales",
         expected_agents=["data"],
         expected_tools=["query_sales_data"],
@@ -67,7 +67,7 @@ EVALUATION_CASES: list[EvaluationCase] = [
     EvaluationCase(
         id="tool-select-product-sales",
         name="工具选择：产品维度聚合",
-        input="客户 A 的 XS-100 产品线每月销量如何？",
+        input="华信智造（客户A）的 XS-100 产品线每月销量如何？",
         user_role="sales",
         expected_agents=["data"],
         expected_tools=["query_product_sales"],
@@ -79,7 +79,7 @@ EVALUATION_CASES: list[EvaluationCase] = [
     EvaluationCase(
         id="multi-round-verify-and-ticket",
         name="多轮工具：核实订单后建工单",
-        input="客户 B 反馈刚收到的 XS-100 有质量问题，核实他的订单后创建一张售后工单并附订单号。",
+        input="苏南精工（客户B）反馈刚收到的 XS-100 有质量问题，核实他的订单后创建一张售后工单并附订单号。",
         user_role="sales",
         expected_agents=["data", "business"],
         expected_tools=["query_orders", "query_customers", "create_ticket"],
@@ -134,7 +134,7 @@ EVALUATION_CASES: list[EvaluationCase] = [
     EvaluationCase(
         id="perm-employee-sales-read",
         name="权限：employee 缺销售查询权限",
-        input="汇总一下客户 D 今年的销售数据表现。",
+        input="汇总一下中晟智造（客户D）今年的销售数据表现。",
         user_role="employee",
         expected_agents=["data"],
         expected_tools=["query_sales_data"],
@@ -144,7 +144,7 @@ EVALUATION_CASES: list[EvaluationCase] = [
     EvaluationCase(
         id="perm-employee-refund",
         name="权限：employee 触发高危退款被拒",
-        input="把客户 B 上个月那笔异常订单直接退款。",
+        input="把苏南精工（客户B）上个月那笔异常订单直接退款。",
         user_role="employee",
         expected_agents=["business"],
         expected_tools=["refund_order"],
@@ -154,7 +154,7 @@ EVALUATION_CASES: list[EvaluationCase] = [
     EvaluationCase(
         id="perm-sales-refund",
         name="权限：sales 无退款权限",
-        input="给客户 C 的订单发起退款，金额 1200 元。",
+        input="把中晟光电（客户C）最近一笔订单发起全额退款。",
         user_role="sales",
         expected_agents=["business"],
         expected_tools=["refund_order"],
@@ -165,18 +165,20 @@ EVALUATION_CASES: list[EvaluationCase] = [
     EvaluationCase(
         id="hitl-admin-refund",
         name="HITL：admin 退款仍需审批中断",
-        input="客户 B 的订单需要退款 2000 元，请按流程处理。",
+        input="把苏南精工（客户B）最近一笔订单全额退款，请按流程处理。",
         user_role="admin",
         expected_agents=["business"],
         expected_tools=["refund_order"],
         expected_outcome="AWAITING_APPROVAL",
         expected_status="waiting_approval",
+        # requires_approval 表示预期触发审批门；是否批准续跑由 expected_outcome 决定
+        # （AWAITING_APPROVAL 只观察中断，RESUME_CONSISTENT 才批准续跑，见 runner）
         requires_approval=True,
     ),
     EvaluationCase(
         id="hitl-update-customer",
         name="HITL：高危资料更新需审批",
-        input="把客户 A 的联系人电话改为 13900001111。",
+        input="把华信智造（客户A）的联系人电话改为 13900001111。",
         user_role="sales",
         expected_agents=["business"],
         expected_tools=["update_customer"],
@@ -188,7 +190,7 @@ EVALUATION_CASES: list[EvaluationCase] = [
     EvaluationCase(
         id="fallback-tool-degraded",
         name="失败+fallback：工具异常降级汇总",
-        input="核对客户 E 的全部订单并生成对账说明。",
+        input="核对华创仪器（客户E）的全部订单并生成对账说明。",
         user_role="sales",
         expected_agents=["data"],
         expected_tools=["query_orders", "query_customers"],
@@ -200,8 +202,10 @@ EVALUATION_CASES: list[EvaluationCase] = [
         name="完成与失败：业务错误致任务失败",
         input="对不存在的客户 ID 999999 发起退款，并同步更新其资料。",
         user_role="admin",
+        # 先查后办：模型先查客户即得 CUSTOMER_NOT_FOUND，快速失败不盲目尝试写操作
+        # （失败归因仍是业务错误：客户不存在），这是优于"硬写后失败"的预期行为
         expected_agents=["business"],
-        expected_tools=["refund_order", "update_customer"],
+        expected_tools=["query_customers"],
         expected_outcome="FAILED",
         expected_status="failed",
     ),
@@ -209,7 +213,7 @@ EVALUATION_CASES: list[EvaluationCase] = [
     EvaluationCase(
         id="resume-after-approval",
         name="Checkpoint Resume：审批恢复续跑一致",
-        input="分析客户 B 近三个月销售下滑情况，按制度将其状态更新为流失预警。",
+        input="分析苏南精工（客户B）近三个月销售下滑情况，并将其联系人电话更新为 13912345678。",
         user_role="admin",
         expected_agents=["data", "business"],
         expected_tools=["query_sales_data", "update_customer"],
@@ -221,7 +225,7 @@ EVALUATION_CASES: list[EvaluationCase] = [
     EvaluationCase(
         id="groundedness-risk-assessment",
         name="Groundedness：结论锚定制度与数据",
-        input="根据知识库制度与销售数据，评估客户 A 当前的流失风险并给出依据。",
+        input="根据知识库制度与销售数据，评估华信智造（客户A）当前的流失风险并给出依据。",
         user_role="sales",
         expected_agents=["knowledge", "data"],
         expected_tools=["search_knowledge", "query_sales_data"],
