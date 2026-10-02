@@ -4,6 +4,7 @@ import { ElMessage } from 'element-plus'
 import { createTask, TASK_EVENT_LABELS, taskStatusLabel, TASK_STATUS_TYPES, type TraceEvent } from '@/api/tasks'
 import { extractErrorMessage } from '@/api/client'
 import { useTaskStream } from '@/composables/useTaskStream'
+import ApprovalDialog from '@/components/ApprovalDialog.vue'
 import ReportPanel from '@/components/ReportPanel.vue'
 import PageHeader from '@/components/PageHeader.vue'
 
@@ -95,6 +96,9 @@ function eventLabel(event: TraceEvent): string {
       <template #header>分析报告</template>
       <ReportPanel :report="report" />
     </el-card>
+
+    <!-- Agent 请求高危操作时就地弹窗审批，免跳转审批中心 -->
+    <ApprovalDialog :stream="stream" />
   </main>
 </template>
 

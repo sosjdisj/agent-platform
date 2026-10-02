@@ -68,6 +68,7 @@ export interface TraceEvent {
   parameter_summary?: string | null
   result_summary?: string | null
   error_code?: string | null
+  approval_id?: number // approval_required / approval_result SSE 帧携带（审批事件扁平 dump）
 }
 
 /** 报告证据来源（结构 = 后端 agents.state.Source）：knowledge=知识库分块

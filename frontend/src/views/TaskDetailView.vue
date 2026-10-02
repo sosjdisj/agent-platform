@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useTaskStream } from '@/composables/useTaskStream'
+import ApprovalDialog from '@/components/ApprovalDialog.vue'
 import ReportPanel from '@/components/ReportPanel.vue'
 import TraceTimeline from '@/components/TraceTimeline.vue'
 import { taskStatusLabel, TASK_STATUS_TYPES, type TraceEvent } from '@/api/tasks'
@@ -132,6 +133,9 @@ onMounted(async () => {
       <template #header>分析报告</template>
       <ReportPanel :report="report" />
     </el-card>
+
+    <!-- Agent 请求高危操作时就地弹窗审批，免跳转审批中心 -->
+    <ApprovalDialog :stream="stream" />
   </main>
 </template>
 

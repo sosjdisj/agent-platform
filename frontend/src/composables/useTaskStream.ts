@@ -29,6 +29,17 @@ export function useTaskStream(onEvent?: (event: TraceEvent) => void) {
   let pollTimer: number | null = null
   let unmounted = false
 
+  /** 实时帧订阅器（审批弹窗等跨组件消费），SSE 每帧逐一回调 */
+  const listeners = new Set<(event: TraceEvent) => void>()
+
+  /** 注册实时帧监听，返回退订函数（组件卸载时调用） */
+  function onStreamEvent(listener: (event: TraceEvent) => void): () => void {
+    listeners.add(listener)
+    return () => {
+      listeners.delete(listener)
+    }
+  }
+
   /** 停止订阅与轮询（到达终态 / 更换任务 / 页面卸载） */
   function dispose(): void {
     source?.close()
@@ -50,6 +61,7 @@ export function useTaskStream(onEvent?: (event: TraceEvent) => void) {
       const event = JSON.parse(e.data as string) as TraceEvent
       events.value.push(event)
       onEvent?.(event)
+      for (const listener of listeners) listener(event)
       if (TERMINAL_EVENTS.has(event.event)) void refresh().catch(() => {})
     } catch {
       // 非 JSON 帧降级为 message，仅保活，不进事件列表
@@ -120,5 +132,5 @@ export function useTaskStream(onEvent?: (event: TraceEvent) => void) {
     dispose()
   })
 
-  return { task, events, report, isTerminal, open, update, refresh, cancel, reset }
+  return { task, events, report, isTerminal, open, update, refresh, cancel, reset, onStreamEvent }
 }
